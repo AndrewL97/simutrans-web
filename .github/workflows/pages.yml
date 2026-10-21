@@ -42,21 +42,24 @@ jobs:
           SOURCE_REF: master
         run: bash scripts/build.sh
 
-      - name: Download and install pak128
+      - name: Download and install pak64
         shell: bash
         run: |
           set -euo pipefail
 
           PAK_URL="https://sourceforge.net/projects/simutrans/files/pak64/125-0/simupak64-125-0.zip/download"
           PAK_ZIP="$RUNNER_TEMP/simupak64-125-0.zip"
+          PAK_DIR="$RUNNER_TEMP/pak64"
 
           curl --fail --location --retry 3 "$PAK_URL" -o "$PAK_ZIP"
-          unzip -q "$PAK_ZIP" -d dist/
-          
-          test -d dist/simutrans/pak64
-          find dist/simutrans/pak64 -name '*.pak' -print -quit | grep -q .
-          mkdir --parents dist/simutrans/pak64/
-          mv -r dist/simutrans/pak64/ dist/simutrans/paksets/pak64/
+          mkdir -p "$PAK_DIR"
+          unzip -q "$PAK_ZIP" -d "$PAK_DIR"
+
+          test -d "$PAK_DIR/simutrans/pak64"
+          find "$PAK_DIR/simutrans/pak64" -name '*.pak' -print -quit | grep -q .
+
+          mkdir -p dist/paksets
+          mv "$PAK_DIR/simutrans/pak64" dist/paksets/pak64
 
       - name: Validate WebAssembly artifacts
         shell: bash
