@@ -1,0 +1,60 @@
+name: Build and deploy Simutrans WebAssembly
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout web wrapper
+        uses: actions/checkout@v4
+
+      - name: Install Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.64
+          actions-cache-folder: emsdk-cache
+
+      - name: Verify toolchain
+        shell: bash
+        run: |
+          emcc --version
+          emmake --version || true
+          git --version
+          unzip -v | head -n 2
+
+      - name: Build Simutrans for the browser
+        env:
+          PAKSET_URL: ${{ vars.PAKSET_URL }}
+          SOURCE_REPOSITORY: https://github.com/simutrans/simutrans.git
+          SOURCE_REF: master
+        run: bash scripts/build.sh
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-24.04
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
