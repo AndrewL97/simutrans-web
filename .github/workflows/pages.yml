@@ -52,12 +52,9 @@ jobs:
 
           curl --fail --location --retry 3 "$PAK_URL" -o "$PAK_ZIP"
           unzip -q "$PAK_ZIP" -d dist/
-
+          
           test -d dist/simutrans/pak128
-          test -n "$(find dist/simutrans/pak128 -maxdepth 1 -type f -name '*.pak' -print -quit)"
-
-          echo "Installed pak128 files:"
-          find dist/simutrans/pak128 -maxdepth 1 -type f -name '*.pak' | head -n 20
+          find dist/simutrans/pak128 -name '*.pak' -print -quit | grep -q .
 
       - name: Validate WebAssembly artifacts
         shell: bash
