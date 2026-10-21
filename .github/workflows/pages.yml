@@ -49,17 +49,17 @@ jobs:
 
           PAK_URL="https://sourceforge.net/projects/simutrans/files/pak64/125-0/simupak64-125-0.zip/download"
           PAK_ZIP="$RUNNER_TEMP/simupak64-125-0.zip"
-          PAK_DIR="$RUNNER_TEMP/pak64"
+          PAK_DIR="$RUNNER_TEMP/pak"
 
           curl --fail --location --retry 3 "$PAK_URL" -o "$PAK_ZIP"
           mkdir -p "$PAK_DIR"
           unzip -q "$PAK_ZIP" -d "$PAK_DIR"
 
-          test -d "$PAK_DIR/simutrans/pak64"
-          find "$PAK_DIR/simutrans/pak64" -name '*.pak' -print -quit | grep -q .
+          test -d "$PAK_DIR/simutrans/pak"
+          find "$PAK_DIR/simutrans/pak" -name '*.pak' -print -quit | grep -q .
 
           mkdir -p dist/paksets
-          mv "$PAK_DIR/simutrans/pak64" dist/paksets/pak64
+          mv "$PAK_DIR/simutrans/pak" dist/pak64
 
       - name: Validate WebAssembly artifacts
         shell: bash
