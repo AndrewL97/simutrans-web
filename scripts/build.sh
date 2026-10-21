@@ -32,10 +32,15 @@ CONFIG
 set +e
 emmake make -j2 \
   CFG=default \
-  "FLAGS=-sUSE_SDL=2 -sUSE_FREETYPE=1 -sALLOW_MEMORY_GROWTH=1" \
-  "LDFLAGS=-sUSE_SDL=2 -sUSE_FREETYPE=1 -sALLOW_MEMORY_GROWTH=1 -sMAXIMUM_MEMORY=2GB"
+  HOSTCC=gcc \
+  HOSTCXX=g++ \
+  SDL2_CONFIG=: \
+  FREETYPE_CONFIG=: \
+  "FLAGS=-sUSE_SDL=2 -sUSE_FREETYPE=1 -sUSE_BZIP2=1 -sUSE_ZLIB=1" \
+  "LDFLAGS=-sUSE_SDL=2 -sUSE_FREETYPE=1 -sUSE_BZIP2=1 -sUSE_ZLIB=1 -sALLOW_MEMORY_GROWTH=1 -sMAXIMUM_MEMORY=2GB"
 BUILD_STATUS=$?
 set -e
+
 
 if [[ $BUILD_STATUS -ne 0 ]]; then
   cat >&2 <<'MSG'
@@ -73,3 +78,8 @@ fi
 cp "$ROOT/web/index.html" "$DIST/index.html"
 touch "$DIST/.nojekyll"
 echo "Staged WebAssembly site in $DIST"
+
+
+
+
+
