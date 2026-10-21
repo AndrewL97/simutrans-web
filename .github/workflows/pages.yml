@@ -15,6 +15,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
+
     steps:
       - name: Checkout web wrapper
         uses: actions/checkout@v4
@@ -25,11 +26,16 @@ jobs:
           version: 3.1.64
           actions-cache-folder: emsdk-cache
 
+      - name: Install build utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes git curl unzip file
+
       - name: Verify toolchain
         shell: bash
         run: |
           emcc --version
-          emmake --version || true
+          emcc --show-ports || true
           git --version
           unzip -v | head -n 2
 
@@ -40,6 +46,20 @@ jobs:
           SOURCE_REF: master
         run: bash scripts/build.sh
 
+      - name: Validate WebAssembly artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -s dist/index.html
+          test -s dist/sim.js
+          test -s dist/sim.wasm
+
+          file dist/sim.js dist/sim.wasm
+          grep -q 'sim.js' dist/index.html
+
+          echo "WebAssembly artifacts are present."
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -49,11 +69,14 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     runs-on: ubuntu-24.04
     needs: build
+
     permissions:
       pages: write
       id-token: write
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
