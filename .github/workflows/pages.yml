@@ -47,14 +47,15 @@ jobs:
         run: |
           set -euo pipefail
 
-          PAK_URL="https://github.com/simutrans/pak128/releases/download/Nightly/simupak128-nightly.zip"
-          PAK_ZIP="$RUNNER_TEMP/simupak128-nightly.zip"
+          PAK_URL="https://sourceforge.net/projects/simutrans/files/pak64/125-0/simupak64-125-0.zip/download"
+          PAK_ZIP="$RUNNER_TEMP/simupak64-125-0.zip"
 
           curl --fail --location --retry 3 "$PAK_URL" -o "$PAK_ZIP"
           unzip -q "$PAK_ZIP" -d dist/
           
-          test -d dist/simutrans/pak128
-          find dist/simutrans/pak128 -name '*.pak' -print -quit | grep -q .
+          test -d dist/simutrans/pak64
+          find dist/simutrans/pak64 -name '*.pak' -print -quit | grep -q .
+          cp -r dist/simutrans/pak64 dist/simutrans/paksets/pak64
 
       - name: Validate WebAssembly artifacts
         shell: bash
