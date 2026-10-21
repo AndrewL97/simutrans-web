@@ -55,7 +55,8 @@ jobs:
           
           test -d dist/simutrans/pak64
           find dist/simutrans/pak64 -name '*.pak' -print -quit | grep -q .
-          cp -r dist/simutrans/pak64 dist/simutrans/paksets/pak64
+          mkdir --parents dist/simutrans/pak64/
+          mv -r dist/simutrans/pak64/ dist/simutrans/paksets/pak64/
 
       - name: Validate WebAssembly artifacts
         shell: bash
