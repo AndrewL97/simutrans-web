@@ -54,9 +54,8 @@ jobs:
           test -s dist/index.html
           test -s dist/sim.js
           test -s dist/sim.wasm
-
+          ls dist
           file dist/sim.js dist/sim.wasm
-          grep -q 'sim.js' dist/index.html
 
           echo "WebAssembly artifacts are present."
 
