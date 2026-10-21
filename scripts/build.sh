@@ -30,17 +30,19 @@ CONFIG
 # Emscripten SDL2 port. FLAGS is an upstream Makefile variable; LDFLAGS is
 # passed through for the final link. Build errors should fail this workflow.
 set +e
+
 emmake make -j2 \
   CFG=default \
   HOSTCC=gcc \
   HOSTCXX=g++ \
   SDL2_CONFIG=: \
   FREETYPE_CONFIG=: \
-  "FLAGS=-sUSE_SDL=2 -sUSE_FREETYPE=1 -sUSE_BZIP2=1 -sUSE_ZLIB=1" \
+  "FLAGS=-O2" \
+  "CXXFLAGS=-O2 -sUSE_SDL=2 -sUSE_FREETYPE=1 -sUSE_BZIP2=1 -sUSE_ZLIB=1" \
   "LDFLAGS=-sUSE_SDL=2 -sUSE_FREETYPE=1 -sUSE_BZIP2=1 -sUSE_ZLIB=1 -sALLOW_MEMORY_GROWTH=1 -sMAXIMUM_MEMORY=2GB"
+
 BUILD_STATUS=$?
 set -e
-
 
 if [[ $BUILD_STATUS -ne 0 ]]; then
   cat >&2 <<'MSG'
