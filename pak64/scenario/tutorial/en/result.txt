@@ -1,0 +1,1 @@
+<p>Chapter completed: {ratio_chapter}%.</p>
