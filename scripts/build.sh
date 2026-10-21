@@ -15,10 +15,6 @@ echo "Fetching Simutrans source: $SOURCE_REPOSITORY ($SOURCE_REF)"
 git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPOSITORY" "$WORK"
 cd "$WORK"
 
-# Emscripten supplies SDL2 as a port, but upstream's Makefile may not
-# automatically add -sUSE_SDL=2. Keep these flags visible in CI logs.
-# This is a baseline attempt; upstream Makefile/dependency integration may
-# require a small maintained patch once actual compiler diagnostics are known.
 cat > config.default <<'CONFIG'
 BACKEND = sdl2
 COLOUR_DEPTH = 16
@@ -26,55 +22,80 @@ OSTYPE = linux
 OPTIMISE = 1
 CONFIG
 
-# Try the upstream make build with Emscripten. `-sUSE_SDL=2` requests the
-# Emscripten SDL2 port. FLAGS is an upstream Makefile variable; LDFLAGS is
-# passed through for the final link. Build errors should fail this workflow.
+echo "=== Emscripten configuration ==="
+emcc --version
+emcc --show-ports || true
+
+EM_CACHE="$(em-config CACHE)"
+echo "Emscripten cache: $EM_CACHE"
+
+find "$EM_CACHE" \
+  \( -name 'sdl2.pc' -o -name 'freetype2.pc' \) \
+  -print 2>/dev/null || true
+
+# Bypass host pkg-config discovery for SDL2 and FreeType.
+# Emscripten's ports must provide the actual WASM libraries.
 set +e
 emmake make -j2 \
   CFG=default \
-  "FLAGS=-sUSE_SDL=2 -sUSE_FREETYPE=1 -sUSE_BZIP2=1 -sUSE_ZLIB=1 -sUSE_LIBPNG=1 -sALLOW_MEMORY_GROWTH=1" \
+  SDL2_CONFIG=true \
+  FREETYPE_CONFIG=true \
+  "FLAGS=-sUSE_SDL=2 -sUSE_FREETYPE=1 -sUSE_BZIP2=1 -sUSE_ZLIB=1 -sUSE_LIBPNG=1" \
   "LDFLAGS=-sUSE_SDL=2 -sUSE_FREETYPE=1 -sUSE_BZIP2=1 -sUSE_ZLIB=1 -sUSE_LIBPNG=1 -sALLOW_MEMORY_GROWTH=1 -sMAXIMUM_MEMORY=2GB"
 BUILD_STATUS=$?
 set -e
 
 if [[ $BUILD_STATUS -ne 0 ]]; then
-  cat >&2 <<'MSG'
-ERROR: Upstream Simutrans did not build with this baseline Emscripten configuration.
-This scaffold is not a verified upstream port. Review the first compiler/linker error,
-then patch the upstream Makefile/dependencies or maintain an Emscripten-specific fork.
-Do not deploy a native executable as a substitute.
-MSG
+  echo "ERROR: Simutrans failed to build with Emscripten." >&2
+  echo "Inspect the first compiler/linker error and patch upstream dependency handling if required." >&2
   exit "$BUILD_STATUS"
 fi
 
-# Locate the generated Emscripten JavaScript launcher. A valid browser build
-# should have a .js file paired with a .wasm file; native executables are rejected.
-JS_FILE="$(find build -type f -name '*.js' -print -quit 2>/dev/null || true)"
-WASM_FILE="$(find build -type f -name '*.wasm' -print -quit 2>/dev/null || true)"
-if [[ -z "$JS_FILE" || -z "$WASM_FILE" ]]; then
-  echo "ERROR: Build succeeded but no .js/.wasm pair was found. The upstream Makefile likely needs an Emscripten-specific output target." >&2
-  find build -maxdepth 4 -type f -print | head -n 100 || true
+BUILD_DIR="$WORK/build/default"
+JS_FILE="$BUILD_DIR/sim.js"
+WASM_FILE="$BUILD_DIR/sim.wasm"
+
+echo "=== Inspecting build outputs ==="
+find "$BUILD_DIR" -maxdepth 1 -type f \
+  -printf '%f (%s bytes)\n' 2>/dev/null || true
+file "$BUILD_DIR/sim" "$BUILD_DIR/sim.wasm" 2>/dev/null || true
+
+# Some Makefile configurations emit the JavaScript launcher without .js.
+if [[ ! -f "$JS_FILE" && -f "$BUILD_DIR/sim" ]]; then
+  if head -c 512 "$BUILD_DIR/sim" |
+      grep -qE '(^|[[:space:]])(var|let|const|import|function)[[:space:]]'; then
+    JS_FILE="$BUILD_DIR/sim"
+  fi
+fi
+
+if [[ ! -f "$JS_FILE" || ! -f "$WASM_FILE" ]]; then
+  echo "ERROR: Expected a JavaScript launcher and WebAssembly file." >&2
+  find "$BUILD_DIR" -maxdepth 2 -type f \
+    -printf '%p\n' 2>/dev/null | head -n 120 || true
   exit 1
 fi
 
-cp "$JS_FILE" "$DIST/simutrans.js"
-cp "$WASM_FILE" "$DIST/simutrans.wasm"
+# Keep the JS and WASM basenames aligned with the generated loader.
+cp "$JS_FILE" "$DIST/sim.js"
+cp "$WASM_FILE" "$DIST/sim.wasm"
 
-# Copy data files if the upstream source tree contains any. A real deployment
-# should use a pinned, legally redistributable pakset rather than source assets.
+# Optional direct HTTPS ZIP URL for a legally redistributable pakset.
 if [[ -n "${PAKSET_URL:-}" ]]; then
   mkdir -p "$DIST/game"
-  curl --fail --location --retry 3 "$PAKSET_URL" -o "$RUNNER_TEMP/pakset.zip"
+  curl --fail --location --retry 3 \
+    "$PAKSET_URL" -o "$RUNNER_TEMP/pakset.zip"
   unzip -q "$RUNNER_TEMP/pakset.zip" -d "$DIST/game"
 else
-  echo "PAKSET_URL is unset; game data will not be bundled."
+  echo "WARNING: PAKSET_URL is unset; game data may be missing."
 fi
 
 cp "$ROOT/web/index.html" "$DIST/index.html"
 touch "$DIST/.nojekyll"
+
+test -s "$DIST/index.html"
+test -s "$DIST/sim.js"
+test -s "$DIST/sim.wasm"
+
+file "$DIST/sim.js" "$DIST/sim.wasm"
+
 echo "Staged WebAssembly site in $DIST"
-
-
-
-
-
